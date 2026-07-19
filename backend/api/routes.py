@@ -11,7 +11,7 @@ from backend.utils.file_utils import (
     get_default_skill_validation_results,
 )
 
-logger = logging.getLogger('ats_resume_scorer')
+logger = logging.getLogger('resumetric')
 
 router = APIRouter(prefix='/api/v1', tags=['Analysis'])
 

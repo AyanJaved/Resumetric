@@ -4,7 +4,7 @@ import json
 from datetime import datetime, timezone
 from typing import List, Optional, Dict
 
-logger = logging.getLogger('ats_resume_scorer')
+logger = logging.getLogger('resumetric')
 
 from backend.core.config import SUPABASE_URL, SUPABASE_KEY
 

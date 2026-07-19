@@ -7,7 +7,7 @@ try:
 except ImportError:
     WEASYPRINT_INSTALLED = False
 
-logger = logging.getLogger('ats_resume_scorer')
+logger = logging.getLogger('resumetric')
 
 def generate_combined_pdf(html_docs: dict[str, str]) -> bytes:
     if not WEASYPRINT_INSTALLED:

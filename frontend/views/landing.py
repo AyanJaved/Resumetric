@@ -26,7 +26,7 @@ def render():
     # Hero Section
     st.markdown("""
     <div class="main-header">
-        <h1>🎯 ATS Resume Scorer</h1>
+        <h1>🎯 Resumetric</h1>
         <h3>Optimize Your Resume for Applicant Tracking Systems</h3>
         <p>Get instant feedback on your resume's ATS compatibility with AI-powered analysis</p>
     </div>

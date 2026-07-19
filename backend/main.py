@@ -13,11 +13,11 @@ from backend.core.config import(
 )
 from backend.api.routes import router
 
-logger=logging.getLogger('ats_resume_scorer')
+logger=logging.getLogger('resumetric')
 
 @asynccontextmanager
 async def lifespan(app:FastAPI):
-    logger.info('Starting ATS Resume Analyzer API...')
+    logger.info('Starting Resumetric API...')
 
     logger.info(f'Loading spaCy NLP model: {SPACY_MODEL_PRIMARY}')
     import spacy

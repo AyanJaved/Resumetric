@@ -5,7 +5,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from backend.core.config import SUPABASE_JWT_SECRET, SUPABASE_URL
 
-logger = logging.getLogger('ats_resume_scorer')
+logger = logging.getLogger('resumetric')
 
 _bearer_scheme = HTTPBearer(auto_error=False)
 

@@ -5,7 +5,7 @@ from typing import Any, Dict
 import streamlit as st
 from supabase import Client, create_client
 
-logger = logging.getLogger('ats_resume_scorer')
+logger = logging.getLogger('resumetric')
 
 
 try:
@@ -91,43 +91,6 @@ def sign_up_with_password(email: str, password: str) -> Dict[str, Any]:
         return {'error': _humanize(exc)}
 
 
-def google_oauth_url() -> Dict[str, Any]:
-    err = _missing_config()
-    if err:
-        return {'error': err}
-    try:
-        resp = get_client().auth.sign_in_with_oauth({
-            'provider': 'google',
-            'options': {'redirect_to': OAUTH_REDIRECT_URL},
-        })
-        return {'url': resp.url}
-    except Exception as exc:
-        logger.warning(f'oauth url generation failed: {exc}')
-        return {'error': _humanize(exc)}
-
-
-def exchange_code_for_session(auth_code: str) -> Dict[str, Any]:
-    """Called once after the OAuth provider redirects back with `?code=...`."""
-    err = _missing_config()
-    if err:
-        return {'error': err}
-    client = get_client()
-    try:
-        storage_key = f'{client.auth._storage_key}-code-verifier'
-        code_verifier = client.auth._storage.get_item(storage_key) or ''
-        resp = client.auth.exchange_code_for_session({
-            'auth_code': auth_code,
-            'code_verifier': code_verifier,
-            'redirect_to': OAUTH_REDIRECT_URL,
-        })
-        if not resp.session or not resp.user:
-            return {'error': 'OAuth exchange returned no session'}
-        return _session_dict(resp.session, resp.user)
-    except Exception as exc:
-        logger.warning(f'exchange_code_for_session failed: {exc}')
-        return {'error': _humanize(exc)}
-
-
 def sign_out() -> None:
     if _missing_config():
         return
@@ -147,3 +110,16 @@ def _humanize(exc: Exception) -> str:
     if 'password should be at least' in msg.lower():
         return 'Password too short (Supabase default is 6 characters)'
     return msg
+
+def refresh_session(refresh_token: str) -> Dict[str, Any]:
+    err = _missing_config()
+    if err:
+        return {'error': err}
+    try:
+        resp = get_client().auth.refresh_session(refresh_token)
+        if not resp.session or not resp.user:
+            return {'error': 'Session expired — please sign in again'}
+        return _session_dict(resp.session, resp.user)
+    except Exception as exc:
+        logger.warning(f'refresh_session failed: {exc}')
+        return {'error': _humanize(exc)}

@@ -1,6 +1,8 @@
 import streamlit as st
 import sys
 from pathlib import Path
+from streamlit_cookies_controller import CookieController
+from services import supabase_client
 
 # Put the repo root on sys.path so `from frontend.views import ...` resolves
 # regardless of the directory streamlit was launched from.
@@ -8,13 +10,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Configure page
 st.set_page_config(
-    page_title="ATS Resume Scorer",
+    page_title="Resumetric",
     page_icon="🎯",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Auth state. Populated by Supabase sign-in / sign-up / OAuth.
+# Auth state. Populated by Supabase sign-in / sign-up.
 # All four are None when signed out, all four are set when signed in.
 for key, default in [
     ("access_token", None),
@@ -27,27 +29,31 @@ for key, default in [
     if key not in st.session_state:
         st.session_state[key] = default
 
-# If we just came back from Google OAuth, Supabase appends `?code=<authcode>`
-# to the redirect URL. Exchange it for a session before rendering anything.
-if (
-    not st.session_state.access_token
-    and "code" in st.query_params
-):
-    from frontend.services import supabase_client
-    result = supabase_client.exchange_code_for_session(st.query_params["code"])
+# Cookie controller — used to persist the refresh_token across page reloads,
+# since st.session_state resets on every hard refresh (new browser session).
+cookies = CookieController()
 
-    #Always clear the ?code= param so a refresh doesn't try to re-exchange.
-    st.query_params.clear()
-    if "error" in result:
-        st.session_state.auth_error = f"Google sign-in failed: {result['error']}"
-    else:
-        st.session_state.access_token  = result["access_token"]
-        st.session_state.refresh_token = result["refresh_token"]
-        st.session_state.user_id       = result["user_id"]
-        st.session_state.user_email    = result["email"]
-        st.rerun()
+# If we just logged in, the cookie component needs one full render pass
+# mounted before we can safely call .set() on it.
+if st.session_state.get("pending_cookie"):
+    cookies.set("refresh_token", st.session_state.pending_cookie)
+    st.session_state.pending_cookie = None
 
-#Load custom CSS
+# On a fresh page load with no session in memory, try to silently restore
+# it from the refresh_token cookie before rendering the sidebar/auth UI.
+if not st.session_state.access_token:
+    saved_refresh = cookies.get("refresh_token")
+    if saved_refresh:
+        result = supabase_client.refresh_session(saved_refresh)
+        if "error" not in result:
+            st.session_state.access_token  = result["access_token"]
+            st.session_state.refresh_token = result["refresh_token"]
+            st.session_state.user_id       = result["user_id"]
+            st.session_state.user_email    = result["email"]
+        else:
+            cookies.remove("refresh_token")
+
+# Load custom CSS
 def load_css():
     try:
         css_path = Path(__file__).parent / 'assets' / 'styles.css'
@@ -65,27 +71,25 @@ if 'current_view' not in st.session_state:
 # Sidebar navigation
 with st.sidebar:
     st.markdown("## Navigation")
-    
+
     if st.button("🏠 Home", use_container_width=True):
         st.session_state.current_view = 'landing'
         st.rerun()
-    
+
     if st.button("🎯 ATS Scorer", use_container_width=True):
         st.session_state.current_view = 'scorer'
         st.rerun()
-    
+
     if st.button("📊 History", use_container_width=True):
         st.session_state.current_view = 'history'
         st.rerun()
-    
+
     if st.button("📚 Resources", use_container_width=True):
         st.session_state.current_view = 'resources'
         st.rerun()
-    
+
     st.markdown("---")
     st.markdown("### 👤 Account")
-
-    from frontend.services import supabase_client
 
     if st.session_state.access_token:
         # Signed-in state: show email + sign-out button.
@@ -94,9 +98,10 @@ with st.sidebar:
             supabase_client.sign_out()
             for k in ("access_token", "refresh_token", "user_id", "user_email"):
                 st.session_state[k] = None
+            cookies.remove("refresh_token")
             st.rerun()
     else:
-        # Signed-out state: tabs for sign-in vs sign-up + Google OAuth button.
+        # Signed-out state: tabs for sign-in vs sign-up.
         if st.session_state.auth_error:
             st.error(st.session_state.auth_error)
             st.session_state.auth_error = None
@@ -120,6 +125,7 @@ with st.sidebar:
                     st.session_state.refresh_token = result["refresh_token"]
                     st.session_state.user_id       = result["user_id"]
                     st.session_state.user_email    = result["email"]
+                    st.session_state.pending_cookie = result["refresh_token"]  # defer the rerun
                 st.rerun()
 
         with tab_up:
@@ -140,38 +146,22 @@ with st.sidebar:
                     st.session_state.refresh_token = result["refresh_token"]
                     st.session_state.user_id       = result["user_id"]
                     st.session_state.user_email    = result["email"]
+                    st.session_state.pending_cookie = result["refresh_token"]  # defer the rerun
                 st.rerun()
-
-        st.markdown("<div style='text-align:center; margin: 8px 0; color:#94a3b8;'>or</div>",
-                    unsafe_allow_html=True)
-
-        oauth = supabase_client.google_oauth_url()
-        if "error" in oauth:
-            st.caption(f"Google sign-in unavailable: {oauth['error']}")
-        else:
-            st.link_button(
-                "Continue with Google",
-                url=oauth["url"],
-                use_container_width=True,
-            )
 
 # Main content area - render based on current view
 if st.session_state.current_view == 'landing':
-    # Import and render landing page
     from frontend.views import landing
     landing.render()
 
 elif st.session_state.current_view == 'scorer':
-    # Import and render scorer page
     from frontend.views import scorer
     scorer.render()
 
 elif st.session_state.current_view == 'history':
-    # Import and render history page
     from frontend.views import history
     history.render()
 
 elif st.session_state.current_view == 'resources':
-    # Import and render resources page
     from frontend.views import resources
     resources.render()

@@ -5,7 +5,7 @@ from typing import Dict
 
 from groq import Groq
 
-logger=logging.getLogger('ats_resume_scorer')
+logger=logging.getLogger('resumetric')
 
 
 GROQ_MODEL='llama-3.3-70b-versatile'

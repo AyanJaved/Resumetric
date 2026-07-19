@@ -15,7 +15,7 @@ def analyze_full_resume(
     job_description: Optional[str] = None,
 ) -> Dict:
     import logging
-    logger = logging.getLogger('ats_resume_scorer')
+    logger = logging.getLogger('resumetric')
     parsed_resume = parse_resume(resume_text)
     logger.info(f"Groq parsed summary: {parsed_resume.get('professional_summary', '')[:100]!r}")
     logger.info(f"Groq parsed skills count: {len(parsed_resume.get('skills', []))}")
