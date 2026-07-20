@@ -17,7 +17,7 @@ APP_VERSION='1.0.0'
 APP_DESCRIPTION='Analyze resumes against job descriptions using NLP + ML'
 
 ALLOWED_ORIGINS = [
-    'https://appapppy-ktwxupi73vqhjzweksze9d.streamlit.app/'
+    'https://resumetricc.streamlit.app/'
 ]  
 
 #file 
